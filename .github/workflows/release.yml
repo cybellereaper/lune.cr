@@ -18,7 +18,10 @@ jobs:
       - name: Install LLVM and build deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build llvm-20-dev clang-20 lld-20
+          sudo apt-get install -y cmake ninja-build llvm-dev llvm-runtime clang lld
+
+      - name: Resolve LLVM_DIR
+        run: echo "LLVM_DIR=$(llvm-config --cmakedir)" >> "$GITHUB_ENV"
 
       - name: Build, test, and package (Linux)
         run: ./tools/build_linux.sh
@@ -39,6 +42,7 @@ jobs:
         run: |
           choco install llvm --version=20.1.8 -y
           "C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "LLVM_DIR=C:\Program Files\LLVM\lib\cmake\llvm" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Build, test, and package (Windows)
         shell: powershell

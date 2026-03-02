@@ -11,10 +11,22 @@ if (-not (Test-Path $LlvmDir)) {
 
 cmake -S . -B $BuildDir -DLUNE_BUILD_TESTS=ON -DLLVM_DIR="$LlvmDir"
 cmake --build $BuildDir --config $BuildType
+if ($LASTEXITCODE -ne 0) { throw 'cmake build failed' }
+
 ctest --test-dir $BuildDir -C $BuildType --output-on-failure
+if ($LASTEXITCODE -ne 0) { throw 'ctest failed' }
 
 New-Item -ItemType Directory -Path $PackageDir -Force | Out-Null
-Copy-Item "$BuildDir/$BuildType/lune.exe" "$PackageDir/lune-windows-x64.exe"
 
+$ExeCandidates = @(
+  "$BuildDir/$BuildType/lune.exe",
+  "$BuildDir/lune.exe"
+)
+$ExePath = $ExeCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $ExePath) {
+  throw 'Could not locate lune.exe after build'
+}
+
+Copy-Item $ExePath "$PackageDir/lune-windows-x64.exe"
 Compress-Archive -Path "$PackageDir/lune-windows-x64.exe" -DestinationPath "$PackageDir/lune-windows-x64.zip" -Force
 Write-Output "Built artifact: $PackageDir/lune-windows-x64.zip"
