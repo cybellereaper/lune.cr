@@ -11,6 +11,7 @@ class Parser {
 public:
     explicit Parser(std::vector<Token> tokens);
     Program parse_program();
+    [[nodiscard]] const std::vector<Diagnostic>& diagnostics() const;
 
 private:
     [[nodiscard]] bool is_at_end() const;
@@ -20,6 +21,7 @@ private:
     bool check(TokenType type) const;
     bool match(TokenType type);
     const Token& consume(TokenType type, const char* error_message);
+    void add_error_here(const char* error_message);
 
     StmtPtr declaration();
     StmtPtr statement();
@@ -41,6 +43,7 @@ private:
 
     std::vector<Token> tokens_;
     std::size_t current_{0};
+    std::vector<Diagnostic> diagnostics_{};
 };
 
 } // namespace lune

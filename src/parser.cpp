@@ -1,6 +1,5 @@
 #include "lune/parser.hpp"
 
-#include <stdexcept>
 
 namespace lune {
 
@@ -17,12 +16,15 @@ StmtPtr make_stmt(Stmt::Variant node) { return std::make_shared<Stmt>(Stmt{std::
 Parser::Parser(std::vector<Token> tokens) : tokens_(std::move(tokens)) {}
 
 Program Parser::parse_program() {
+    diagnostics_.clear();
     Program program;
     while (!is_at_end()) {
         program.items.push_back(declaration());
     }
     return program;
 }
+
+const std::vector<Diagnostic>& Parser::diagnostics() const { return diagnostics_; }
 
 StmtPtr Parser::declaration() {
     if (match(TokenType::KwFn)) return function_declaration();
@@ -152,7 +154,8 @@ ExprPtr Parser::call() {
     auto expr = primary();
     while (match(TokenType::LParen)) {
         if (!std::holds_alternative<IdentifierExpr>(expr->node)) {
-            throw std::runtime_error("Only named calls are currently supported");
+            add_error_here("Only named calls are currently supported");
+            return expr;
         }
         CallExpr call_expr{.callee = std::get<IdentifierExpr>(expr->node).name};
         if (!check(TokenType::RParen)) {
@@ -178,8 +181,10 @@ ExprPtr Parser::primary() {
         consume(TokenType::RParen, "Expected ')' after expression");
         return expr;
     }
-    throw std::runtime_error("Expected expression");
+    add_error_here("Expected expression");
+    return make_expr(NullExpr{});
 }
+
 
 bool Parser::is_at_end() const { return peek().type == TokenType::End; }
 const Token& Parser::peek() const { return tokens_[current_]; }
@@ -196,7 +201,12 @@ bool Parser::match(TokenType type) {
 }
 const Token& Parser::consume(TokenType type, const char* error_message) {
     if (check(type)) return advance();
-    throw std::runtime_error(error_message);
+    add_error_here(error_message);
+    return peek();
+}
+
+void Parser::add_error_here(const char* error_message) {
+    diagnostics_.push_back(Diagnostic{.message = error_message, .line = peek().line, .column = peek().column});
 }
 
 } // namespace lune
