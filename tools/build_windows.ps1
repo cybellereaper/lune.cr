@@ -3,19 +3,13 @@ $ErrorActionPreference = 'Stop'
 $BuildDir = if ($env:BUILD_DIR) { $env:BUILD_DIR } else { 'build' }
 $BuildType = if ($env:BUILD_TYPE) { $env:BUILD_TYPE } else { 'Release' }
 $PackageDir = if ($env:PACKAGE_DIR) { $env:PACKAGE_DIR } else { 'dist' }
-$Generator = if ($env:CMAKE_GENERATOR) { $env:CMAKE_GENERATOR } else { 'Visual Studio 17 2022' }
-$Architecture = if ($env:CMAKE_ARCH) { $env:CMAKE_ARCH } else { 'x64' }
+$LlvmDir = if ($env:LLVM_DIR) { $env:LLVM_DIR } else { "$env:ProgramFiles/LLVM/lib/cmake/llvm" }
 
-if (-not $env:LLVM_DIR) {
-  $Candidate = 'C:\Program Files\LLVM\lib\cmake\llvm'
-  if (Test-Path $Candidate) {
-    $env:LLVM_DIR = $Candidate
-  }
+if (-not (Test-Path $LlvmDir)) {
+  throw "LLVM CMake config directory was not found at '$LlvmDir'. Set LLVM_DIR to the directory containing LLVMConfig.cmake."
 }
 
-cmake -S . -B $BuildDir -G $Generator -A $Architecture -DLUNE_BUILD_TESTS=ON -DLLVM_DIR="$env:LLVM_DIR"
-if ($LASTEXITCODE -ne 0) { throw 'cmake configure failed' }
-
+cmake -S . -B $BuildDir -DLUNE_BUILD_TESTS=ON -DLLVM_DIR="$LlvmDir"
 cmake --build $BuildDir --config $BuildType
 if ($LASTEXITCODE -ne 0) { throw 'cmake build failed' }
 
