@@ -3,8 +3,13 @@ $ErrorActionPreference = 'Stop'
 $BuildDir = if ($env:BUILD_DIR) { $env:BUILD_DIR } else { 'build' }
 $BuildType = if ($env:BUILD_TYPE) { $env:BUILD_TYPE } else { 'Release' }
 $PackageDir = if ($env:PACKAGE_DIR) { $env:PACKAGE_DIR } else { 'dist' }
+$LlvmDir = if ($env:LLVM_DIR) { $env:LLVM_DIR } else { "$env:ProgramFiles/LLVM/lib/cmake/llvm" }
 
-cmake -S . -B $BuildDir -DLUNE_BUILD_TESTS=ON
+if (-not (Test-Path $LlvmDir)) {
+  throw "LLVM CMake config directory was not found at '$LlvmDir'. Set LLVM_DIR to the directory containing LLVMConfig.cmake."
+}
+
+cmake -S . -B $BuildDir -DLUNE_BUILD_TESTS=ON -DLLVM_DIR="$LlvmDir"
 cmake --build $BuildDir --config $BuildType
 ctest --test-dir $BuildDir -C $BuildType --output-on-failure
 
