@@ -21,8 +21,8 @@ private:
 
     void skip_whitespace();
     Token make_token(TokenType type, std::string lexeme = {});
-    Token identifier();
-    Token number();
+    Token identifier(char first);
+    Token number(char first);
     Token string();
 
     std::string source_;

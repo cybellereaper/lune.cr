@@ -2,17 +2,21 @@
 
 #include <cctype>
 #include <stdexcept>
-#include <unordered_map>
 
 namespace lune {
 
 namespace {
-const std::unordered_map<std::string, TokenType> kKeywords{
-    {"fn", TokenType::KwFn},       {"const", TokenType::KwConst},
-    {"return", TokenType::KwReturn}, {"if", TokenType::KwIf},
-    {"else", TokenType::KwElse},   {"true", TokenType::KwTrue},
-    {"false", TokenType::KwFalse}, {"null", TokenType::KwNull},
-};
+TokenType identifier_type(std::string_view lexeme) {
+    if (lexeme == "fn") return TokenType::KwFn;
+    if (lexeme == "if") return TokenType::KwIf;
+    if (lexeme == "else") return TokenType::KwElse;
+    if (lexeme == "const") return TokenType::KwConst;
+    if (lexeme == "return") return TokenType::KwReturn;
+    if (lexeme == "true") return TokenType::KwTrue;
+    if (lexeme == "false") return TokenType::KwFalse;
+    if (lexeme == "null") return TokenType::KwNull;
+    return TokenType::Identifier;
+}
 }
 
 std::string_view to_string(TokenType type) {
@@ -58,6 +62,7 @@ Lexer::Lexer(std::string source) : source_(std::move(source)) {}
 
 std::vector<Token> Lexer::tokenize() {
     std::vector<Token> tokens;
+    tokens.reserve(source_.size() / 2 + 1);
     while (!is_at_end()) {
         skip_whitespace();
         if (is_at_end()) {
@@ -116,13 +121,9 @@ std::vector<Token> Lexer::tokenize() {
         case '"': tokens.push_back(string()); break;
         default:
             if (std::isdigit(static_cast<unsigned char>(c))) {
-                --current_;
-                --column_;
-                tokens.push_back(number());
+                tokens.push_back(number(c));
             } else if (std::isalpha(static_cast<unsigned char>(c)) || c == '_') {
-                --current_;
-                --column_;
-                tokens.push_back(identifier());
+                tokens.push_back(identifier(c));
             } else {
                 throw std::runtime_error("Unexpected character in input");
             }
@@ -181,28 +182,29 @@ Token Lexer::make_token(TokenType type, std::string lexeme) {
     return Token{.type = type, .lexeme = lexeme.empty() ? source_.substr(start_, current_ - start_) : std::move(lexeme), .line = line_, .column = column_};
 }
 
-Token Lexer::identifier() {
-    start_ = current_;
+Token Lexer::identifier(char first) {
+    std::string lexeme;
+    lexeme.push_back(first);
     while (std::isalnum(static_cast<unsigned char>(peek())) || peek() == '_') {
-        advance();
+        lexeme.push_back(advance());
     }
-    const auto lexeme = source_.substr(start_, current_ - start_);
-    const auto it = kKeywords.find(lexeme);
-    return make_token(it == kKeywords.end() ? TokenType::Identifier : it->second, lexeme);
+    const auto type = identifier_type(lexeme);
+    return make_token(type, std::move(lexeme));
 }
 
-Token Lexer::number() {
-    start_ = current_;
+Token Lexer::number(char first) {
+    std::string lexeme;
+    lexeme.push_back(first);
     while (std::isdigit(static_cast<unsigned char>(peek()))) {
-        advance();
+        lexeme.push_back(advance());
     }
     if (peek() == '.' && std::isdigit(static_cast<unsigned char>(peek_next()))) {
-        advance();
+        lexeme.push_back(advance());
         while (std::isdigit(static_cast<unsigned char>(peek()))) {
-            advance();
+            lexeme.push_back(advance());
         }
     }
-    return make_token(TokenType::Number, source_.substr(start_, current_ - start_));
+    return make_token(TokenType::Number, std::move(lexeme));
 }
 
 Token Lexer::string() {

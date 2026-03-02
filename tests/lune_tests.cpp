@@ -4,10 +4,30 @@
 #include "lune/parser.hpp"
 
 #include <cassert>
+#include <chrono>
 #include <filesystem>
 #include <iostream>
+#include <sstream>
 
 namespace {
+
+using Clock = std::chrono::steady_clock;
+
+std::string build_large_program(std::size_t function_count, std::size_t statements_per_function) {
+    std::ostringstream out;
+    out << "const seed = 1\n";
+    for (std::size_t i = 0; i < function_count; ++i) {
+        out << "fn f" << i << "() {\n";
+        out << "  x := " << (i % 7) << "\n";
+        for (std::size_t j = 0; j < statements_per_function; ++j) {
+            out << "  x = x + " << ((j % 9) + 1) << "\n";
+        }
+        out << "  return x\n";
+        out << "}\n";
+    }
+    out << "fn main() { return f0() }\n";
+    return out.str();
+}
 
 void test_lexer() {
     lune::Lexer lexer("const x = 42 fn main() { return x }");
@@ -67,6 +87,36 @@ void test_aot() {
     std::filesystem::remove(path);
 }
 
+void test_performance_timings() {
+    constexpr std::size_t iterations = 150;
+    const auto source = build_large_program(12, 40);
+
+    auto lexer_start = Clock::now();
+    std::size_t total_tokens = 0;
+    for (std::size_t i = 0; i < iterations; ++i) {
+        lune::Lexer lexer(source);
+        total_tokens += lexer.tokenize().size();
+    }
+    const auto lexer_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - lexer_start);
+
+    auto parser_start = Clock::now();
+    std::size_t total_items = 0;
+    for (std::size_t i = 0; i < iterations; ++i) {
+        lune::Lexer lexer(source);
+        lune::Parser parser(lexer.tokenize());
+        total_items += parser.parse_program().items.size();
+    }
+    const auto parser_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - parser_start);
+
+    std::cout << "perf: tokenize " << iterations << "x took " << lexer_elapsed.count() << "ms"
+              << ", parse " << iterations << "x took " << parser_elapsed.count() << "ms\n";
+
+    assert(total_tokens > 0);
+    assert(total_items > 0);
+    assert(lexer_elapsed.count() < 2000);
+    assert(parser_elapsed.count() < 4000);
+}
+
 } // namespace
 
 int main() {
@@ -74,5 +124,6 @@ int main() {
     test_jit();
     test_gc();
     test_aot();
+    test_performance_timings();
     std::cout << "All tests passed\n";
 }
