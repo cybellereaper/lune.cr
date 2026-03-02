@@ -1,7 +1,6 @@
 #include "lune/lexer.hpp"
 
 #include <cctype>
-#include <stdexcept>
 
 namespace lune {
 
@@ -61,10 +60,11 @@ std::string_view to_string(TokenType type) {
 Lexer::Lexer(std::string source) : source_(std::move(source)) {}
 
 std::vector<Token> Lexer::tokenize() {
+    diagnostics_.clear();
     std::vector<Token> tokens;
     tokens.reserve(source_.size() / 2 + 1);
     while (!is_at_end()) {
-        skip_whitespace();
+        pending_trivia_ = collect_trivia();
         if (is_at_end()) {
             break;
         }
@@ -100,7 +100,8 @@ std::vector<Token> Lexer::tokenize() {
             break;
         case '!':
             if (!match('=')) {
-                throw std::runtime_error("Unexpected token !");
+                diagnostics_.push_back(Diagnostic{.message = "Unexpected token !", .line = line_, .column = column_});
+                continue;
             }
             tokens.push_back(make_token(TokenType::Ne, "!="));
             break;
@@ -125,7 +126,7 @@ std::vector<Token> Lexer::tokenize() {
             } else if (std::isalpha(static_cast<unsigned char>(c)) || c == '_') {
                 tokens.push_back(identifier(c));
             } else {
-                throw std::runtime_error("Unexpected character in input");
+                diagnostics_.push_back(Diagnostic{.message = "Unexpected character in input", .line = line_, .column = column_});
             }
             break;
         }
@@ -137,6 +138,8 @@ std::vector<Token> Lexer::tokenize() {
 bool Lexer::is_at_end() const { return current_ >= source_.size(); }
 char Lexer::peek() const { return is_at_end() ? '\0' : source_[current_]; }
 char Lexer::peek_next() const { return current_ + 1 < source_.size() ? source_[current_ + 1] : '\0'; }
+
+const std::vector<Diagnostic>& Lexer::diagnostics() const { return diagnostics_; }
 
 char Lexer::advance() {
     if (is_at_end()) {
@@ -161,25 +164,33 @@ bool Lexer::match(char expected) {
     return true;
 }
 
-void Lexer::skip_whitespace() {
+std::string Lexer::collect_trivia() {
+    std::string trivia;
     while (!is_at_end()) {
         const char c = peek();
         if (std::isspace(static_cast<unsigned char>(c))) {
-            advance();
+            trivia.push_back(advance());
             continue;
         }
         if (c == '/' && peek_next() == '/') {
+            trivia.push_back(advance());
+            trivia.push_back(advance());
             while (!is_at_end() && peek() != '\n') {
-                advance();
+                trivia.push_back(advance());
             }
             continue;
         }
         break;
     }
+    return trivia;
 }
 
 Token Lexer::make_token(TokenType type, std::string lexeme) {
-    return Token{.type = type, .lexeme = lexeme.empty() ? source_.substr(start_, current_ - start_) : std::move(lexeme), .line = line_, .column = column_};
+    return Token{.type = type,
+                 .lexeme = lexeme.empty() ? source_.substr(start_, current_ - start_) : std::move(lexeme),
+                 .leading_trivia = std::move(pending_trivia_),
+                 .line = line_,
+                 .column = column_};
 }
 
 Token Lexer::identifier(char first) {
@@ -213,7 +224,8 @@ Token Lexer::string() {
         advance();
     }
     if (is_at_end()) {
-        throw std::runtime_error("Unterminated string");
+        diagnostics_.push_back(Diagnostic{.message = "Unterminated string", .line = line_, .column = column_});
+        return make_token(TokenType::String, source_.substr(start_));
     }
     const auto value = source_.substr(start_, current_ - start_);
     advance();

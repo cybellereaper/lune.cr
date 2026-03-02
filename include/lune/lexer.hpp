@@ -11,6 +11,7 @@ class Lexer {
 public:
     explicit Lexer(std::string source);
     std::vector<Token> tokenize();
+    [[nodiscard]] const std::vector<Diagnostic>& diagnostics() const;
 
 private:
     [[nodiscard]] bool is_at_end() const;
@@ -19,7 +20,7 @@ private:
     char advance();
     bool match(char expected);
 
-    void skip_whitespace();
+    std::string collect_trivia();
     Token make_token(TokenType type, std::string lexeme = {});
     Token identifier(char first);
     Token number(char first);
@@ -30,6 +31,8 @@ private:
     std::size_t current_{0};
     std::size_t line_{1};
     std::size_t column_{1};
+    std::string pending_trivia_{};
+    std::vector<Diagnostic> diagnostics_{};
 };
 
 } // namespace lune

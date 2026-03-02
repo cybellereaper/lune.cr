@@ -37,6 +37,31 @@ void test_lexer() {
     assert(tokens[1].type == lune::TokenType::Identifier);
 }
 
+
+void test_lexer_trivia_and_diagnostics() {
+    lune::Lexer lexer(R"(  // lead
+const x = !
+")");
+    const auto tokens = lexer.tokenize();
+    assert(tokens.size() >= 4);
+    assert(tokens[0].type == lune::TokenType::KwConst);
+    assert(tokens[0].leading_trivia.find("// lead") != std::string::npos);
+
+    const auto& diagnostics = lexer.diagnostics();
+    assert(diagnostics.size() >= 2);
+    assert(diagnostics[0].message.find("Unexpected token !") != std::string::npos);
+}
+
+void test_parser_diagnostics() {
+    lune::Lexer lexer("fn main( { return 1 }");
+    lune::Parser parser(lexer.tokenize());
+    auto program = parser.parse_program();
+    (void)program;
+    const auto& diagnostics = parser.diagnostics();
+    assert(!diagnostics.empty());
+    assert(diagnostics[0].message.find("Expected") != std::string::npos);
+}
+
 void test_jit() {
     lune::Lexer lexer(R"(
         fn main() {
@@ -121,6 +146,8 @@ void test_performance_timings() {
 
 int main() {
     test_lexer();
+    test_lexer_trivia_and_diagnostics();
+    test_parser_diagnostics();
     test_jit();
     test_gc();
     test_aot();
