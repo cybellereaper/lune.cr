@@ -14,7 +14,12 @@ Program Parser::parse_program() {
     diagnostics_.clear();
     Program program;
     while (!is_at_end()) {
+        const auto before = current_;
         program.items.push_back(declaration());
+        if (current_ == before && !is_at_end()) {
+            add_error_here("Parser made no progress; resynchronizing");
+            synchronize();
+        }
     }
     return program;
 }
@@ -95,13 +100,12 @@ StmtPtr Parser::const_declaration() {
 }
 
 StmtPtr Parser::simple_statement() {
-    const bool has_lookahead = current_ + 1 < tokens_.size();
-    if (check(TokenType::Identifier) && has_lookahead && tokens_[current_ + 1].type == TokenType::ShortDecl) {
+    if (check(TokenType::Identifier) && check_next(TokenType::ShortDecl)) {
         const auto name = advance().lexeme;
         advance();
         return make_stmt(ShortDeclStmt{.name = name, .expr = expression()});
     }
-    if (check(TokenType::Identifier) && has_lookahead && tokens_[current_ + 1].type == TokenType::Assign) {
+    if (check(TokenType::Identifier) && check_next(TokenType::Assign)) {
         const auto name = advance().lexeme;
         advance();
         return make_stmt(AssignStmt{.name = name, .expr = expression()});
@@ -186,6 +190,7 @@ ExprPtr Parser::primary() {
         return expr;
     }
     add_error_here("Expected expression");
+    if (!is_at_end()) advance();
     return make_expr(NullExpr{});
 }
 
@@ -198,6 +203,9 @@ const Token& Parser::advance() {
     return previous();
 }
 bool Parser::check(TokenType type) const { return !is_at_end() && peek().type == type; }
+bool Parser::check_next(TokenType type) const {
+    return current_ + 1 < tokens_.size() && tokens_[current_ + 1].type == type;
+}
 bool Parser::match(TokenType type) {
     if (!check(type)) return false;
     advance();
@@ -206,11 +214,25 @@ bool Parser::match(TokenType type) {
 const Token& Parser::consume(TokenType type, const char* error_message) {
     if (check(type)) return advance();
     add_error_here(error_message);
+    if (!is_at_end()) return advance();
     return peek();
 }
 
 void Parser::add_error_here(const char* error_message) {
     diagnostics_.push_back(Diagnostic{.message = error_message, .line = peek().line, .column = peek().column});
+}
+
+void Parser::synchronize() {
+    if (is_at_end()) return;
+    advance();
+    while (!is_at_end()) {
+        if (previous().type == TokenType::RBrace) return;
+        if (check(TokenType::KwFn) || check(TokenType::KwConst) || check(TokenType::KwIf) ||
+            check(TokenType::KwWhile) || check(TokenType::KwReturn)) {
+            return;
+        }
+        advance();
+    }
 }
 
 } // namespace lune

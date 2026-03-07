@@ -82,6 +82,23 @@ void test_parser_while_statement() {
     assert(std::holds_alternative<lune::WhileStmt>(fn->body.statements[1]->node));
 }
 
+
+void test_parser_error_recovery_progress() {
+    lune::Lexer lexer(R"(
+        fn main() {
+            while {
+                return 1
+            }
+            return 2
+        }
+    )");
+    lune::Parser parser(lexer.tokenize());
+    const auto program = parser.parse_program();
+
+    assert(!program.items.empty());
+    assert(!parser.diagnostics().empty());
+}
+
 void test_parser_diagnostics() {
     lune::Lexer lexer("fn main( { return 1 }");
     lune::Parser parser(lexer.tokenize());
@@ -200,6 +217,39 @@ void test_pretty_printer() {
     assert(rendered == expected);
 }
 
+
+void test_performance_while_jit() {
+    lune::Lexer lexer(R"(
+        fn main() {
+            i := 1
+            acc := 0
+            while i <= 10000 {
+                acc = acc + i
+                i = i + 1
+            }
+            return acc
+        }
+    )");
+
+    const auto parse_start = Clock::now();
+    lune::Parser parser(lexer.tokenize());
+    auto program = parser.parse_program();
+    const auto parse_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - parse_start);
+
+    const auto jit_start = Clock::now();
+    lune::Codegen codegen("jit_while_perf_test");
+    codegen.compile(program);
+    const auto value = codegen.run_jit_main();
+    const auto jit_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - jit_start);
+
+    std::cout << "perf: while parse took " << parse_elapsed.count() << "ms"
+              << ", while jit+run took " << jit_elapsed.count() << "ms\n";
+
+    assert(value == 50005000.0);
+    assert(parse_elapsed.count() < 1000);
+    assert(jit_elapsed.count() < 3000);
+}
+
 void test_performance_timings() {
     constexpr std::size_t iterations = 150;
     const auto source = build_large_program(12, 40);
@@ -237,12 +287,14 @@ int main() {
     test_lexer_while_keyword();
     test_lexer_trivia_and_diagnostics();
     test_parser_while_statement();
+    test_parser_error_recovery_progress();
     test_parser_diagnostics();
     test_jit_while_loop();
     test_jit();
     test_gc();
     test_aot();
     test_pretty_printer();
+    test_performance_while_jit();
     test_performance_timings();
     std::cout << "All tests passed\n";
 }

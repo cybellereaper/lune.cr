@@ -147,6 +147,10 @@ public:
 
 
     void emit(const WhileStmt& s) {
+        if (builder->GetInsertBlock()->getTerminator()) {
+            return;
+        }
+
         auto* fn = builder->GetInsertBlock()->getParent();
 
         auto* cond_bb = llvm::BasicBlock::Create(*context, "while.cond", fn);
