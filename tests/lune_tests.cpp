@@ -109,6 +109,28 @@ void test_parser_diagnostics() {
     assert(diagnostics[0].message.find("Expected") != std::string::npos);
 }
 
+void test_parser_if_else_statement() {
+    lune::Lexer lexer(R"(
+        fn main() {
+            if true {
+                return 1
+            } else {
+                return 2
+            }
+        }
+    )");
+    lune::Parser parser(lexer.tokenize());
+    const auto program = parser.parse_program();
+
+    assert(parser.diagnostics().empty());
+    assert(program.items.size() == 1);
+
+    const auto* fn = std::get_if<lune::FunctionDecl>(&program.items[0]->node);
+    assert(fn != nullptr);
+    assert(fn->body.statements.size() == 1);
+    assert(std::holds_alternative<lune::IfStmt>(fn->body.statements[0]->node));
+}
+
 
 void test_jit_while_loop() {
     lune::Lexer lexer(R"(
@@ -146,6 +168,45 @@ void test_jit() {
     codegen.compile(program);
     const auto value = codegen.run_jit_main();
     assert(value == 42.0);
+}
+
+void test_jit_function_call_and_modulo() {
+    lune::Lexer lexer(R"(
+        fn reduce(x, y) {
+            return (x % y) + 1
+        }
+
+        fn main() {
+            return reduce(20, 6)
+        }
+    )");
+    lune::Parser parser(lexer.tokenize());
+    auto program = parser.parse_program();
+
+    lune::Codegen codegen("jit_function_call_modulo_test");
+    codegen.compile(program);
+    const auto value = codegen.run_jit_main();
+    assert(value == 3.0);
+}
+
+void test_jit_if_else_branching() {
+    lune::Lexer lexer(R"(
+        fn main() {
+            x := 2
+            if x > 5 {
+                return 100
+            } else {
+                return 200
+            }
+        }
+    )");
+    lune::Parser parser(lexer.tokenize());
+    auto program = parser.parse_program();
+
+    lune::Codegen codegen("jit_if_else_branching_test");
+    codegen.compile(program);
+    const auto value = codegen.run_jit_main();
+    assert(value == 200.0);
 }
 
 struct Node : lune::GCObject {
@@ -289,8 +350,11 @@ int main() {
     test_parser_while_statement();
     test_parser_error_recovery_progress();
     test_parser_diagnostics();
+    test_parser_if_else_statement();
     test_jit_while_loop();
     test_jit();
+    test_jit_function_call_and_modulo();
+    test_jit_if_else_branching();
     test_gc();
     test_aot();
     test_pretty_printer();
