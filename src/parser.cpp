@@ -115,40 +115,30 @@ StmtPtr Parser::simple_statement() {
 
 ExprPtr Parser::expression() { return equality(); }
 
-ExprPtr Parser::equality() {
-    auto expr = comparison();
-    while (match(TokenType::Eq) || match(TokenType::Ne)) {
+ExprPtr Parser::parse_left_associative_binary_expression(
+    ExprPtr (Parser::*operand_parser)(), std::initializer_list<TokenType> operators) {
+    auto expr = (this->*operand_parser)();
+    while (match_any(operators)) {
         const auto op = previous().lexeme;
-        expr = make_expr(BinaryExpr{.op = op, .lhs = expr, .rhs = comparison()});
+        expr = make_expr(BinaryExpr{.op = op, .lhs = expr, .rhs = (this->*operand_parser)()});
     }
     return expr;
+}
+
+ExprPtr Parser::equality() {
+    return parse_left_associative_binary_expression(&Parser::comparison, {TokenType::Eq, TokenType::Ne});
 }
 
 ExprPtr Parser::comparison() {
-    auto expr = term();
-    while (match(TokenType::Lt) || match(TokenType::Le) || match(TokenType::Gt) || match(TokenType::Ge)) {
-        const auto op = previous().lexeme;
-        expr = make_expr(BinaryExpr{.op = op, .lhs = expr, .rhs = term()});
-    }
-    return expr;
+    return parse_left_associative_binary_expression(&Parser::term, {TokenType::Lt, TokenType::Le, TokenType::Gt, TokenType::Ge});
 }
 
 ExprPtr Parser::term() {
-    auto expr = factor();
-    while (match(TokenType::Plus) || match(TokenType::Minus)) {
-        const auto op = previous().lexeme;
-        expr = make_expr(BinaryExpr{.op = op, .lhs = expr, .rhs = factor()});
-    }
-    return expr;
+    return parse_left_associative_binary_expression(&Parser::factor, {TokenType::Plus, TokenType::Minus});
 }
 
 ExprPtr Parser::factor() {
-    auto expr = unary();
-    while (match(TokenType::Star) || match(TokenType::Slash) || match(TokenType::Percent)) {
-        const auto op = previous().lexeme;
-        expr = make_expr(BinaryExpr{.op = op, .lhs = expr, .rhs = unary()});
-    }
-    return expr;
+    return parse_left_associative_binary_expression(&Parser::unary, {TokenType::Star, TokenType::Slash, TokenType::Percent});
 }
 
 ExprPtr Parser::unary() {
@@ -210,6 +200,13 @@ bool Parser::match(TokenType type) {
     if (!check(type)) return false;
     advance();
     return true;
+}
+
+bool Parser::match_any(std::initializer_list<TokenType> types) {
+    for (const auto type : types) {
+        if (match(type)) return true;
+    }
+    return false;
 }
 const Token& Parser::consume(TokenType type, const char* error_message) {
     if (check(type)) return advance();

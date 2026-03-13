@@ -3,6 +3,7 @@
 #include "lune/ast.hpp"
 #include "lune/token.hpp"
 
+#include <initializer_list>
 #include <vector>
 
 namespace lune {
@@ -36,6 +37,8 @@ private:
     StmtPtr simple_statement();
 
     ExprPtr expression();
+    ExprPtr parse_left_associative_binary_expression(ExprPtr (Parser::*operand_parser)(), std::initializer_list<TokenType> operators);
+    bool match_any(std::initializer_list<TokenType> types);
     ExprPtr equality();
     ExprPtr comparison();
     ExprPtr term();

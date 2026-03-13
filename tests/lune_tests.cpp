@@ -132,6 +132,33 @@ void test_parser_if_else_statement() {
 }
 
 
+
+void test_parser_left_associative_binary_expression() {
+    lune::Lexer lexer(R"(
+        fn main() {
+            return 10 - 3 - 2
+        }
+    )");
+    lune::Parser parser(lexer.tokenize());
+    const auto program = parser.parse_program();
+
+    assert(parser.diagnostics().empty());
+    const auto* fn = std::get_if<lune::FunctionDecl>(&program.items[0]->node);
+    assert(fn != nullptr);
+
+    const auto* return_stmt = std::get_if<lune::ReturnStmt>(&fn->body.statements[0]->node);
+    assert(return_stmt != nullptr);
+    assert(return_stmt->expr.has_value());
+
+    const auto* outer = std::get_if<lune::BinaryExpr>(&(*return_stmt->expr)->node);
+    assert(outer != nullptr);
+    assert(outer->op == "-");
+
+    const auto* inner = std::get_if<lune::BinaryExpr>(&outer->lhs->node);
+    assert(inner != nullptr);
+    assert(inner->op == "-");
+}
+
 void test_jit_while_loop() {
     lune::Lexer lexer(R"(
         fn main() {
@@ -351,6 +378,7 @@ int main() {
     test_parser_error_recovery_progress();
     test_parser_diagnostics();
     test_parser_if_else_statement();
+    test_parser_left_associative_binary_expression();
     test_jit_while_loop();
     test_jit();
     test_jit_function_call_and_modulo();
