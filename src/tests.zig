@@ -74,6 +74,19 @@ test "function call and modulo work" {
     try std.testing.expectEqual(@as(f64, 3), value);
 }
 
+test "function calls parse expression arguments" {
+    const value = try runMain(
+        \\fn add(a, b) {
+        \\  return a + b
+        \\}
+        \\
+        \\fn main() {
+        \\  return add(1 + 2, add(3, 4))
+        \\}
+    );
+    try std.testing.expectEqual(@as(f64, 10), value);
+}
+
 test "parser rejects malformed function" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();

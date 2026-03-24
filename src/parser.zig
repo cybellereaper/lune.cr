@@ -4,6 +4,20 @@ const token_mod = @import("token.zig");
 const Token = token_mod.Token;
 const TokenType = token_mod.TokenType;
 
+const ParseError = error{
+    ExpectedTopLevelItem,
+    ExpectedIdentifier,
+    ExpectedAssign,
+    ExpectedLeftParen,
+    ExpectedRightParen,
+    ExpectedLeftBrace,
+    ExpectedRightBrace,
+    ExpectedExpression,
+    InvalidBinaryOperator,
+};
+
+const ParseResult = ParseError || std.mem.Allocator.Error;
+
 pub const Parser = struct {
     tokens: []const Token,
     index: usize = 0,
@@ -13,7 +27,7 @@ pub const Parser = struct {
         return .{ .allocator = allocator, .tokens = tokens };
     }
 
-    pub fn parseProgram(self: *Parser) !ast.Program {
+    pub fn parseProgram(self: *Parser) ParseResult!ast.Program {
         var items = std.ArrayList(ast.Item).init(self.allocator);
         while (!self.current().is(.eof)) {
             try items.append(try self.parseItem());
@@ -21,20 +35,20 @@ pub const Parser = struct {
         return .{ .items = try items.toOwnedSlice() };
     }
 
-    fn parseItem(self: *Parser) !ast.Item {
+    fn parseItem(self: *Parser) ParseResult!ast.Item {
         if (self.match(.kw_const)) return .{ .const_decl = try self.parseConstDecl() };
         if (self.match(.kw_fn)) return .{ .function_decl = try self.parseFunction() };
         return error.ExpectedTopLevelItem;
     }
 
-    fn parseConstDecl(self: *Parser) !ast.ConstDecl {
+    fn parseConstDecl(self: *Parser) ParseResult!ast.ConstDecl {
         const name = try self.consume(.identifier, error.ExpectedIdentifier);
         _ = try self.consume(.assign, error.ExpectedAssign);
         const value = try self.parseExpression();
         return .{ .name = name.lexeme, .value = value };
     }
 
-    fn parseFunction(self: *Parser) !ast.FunctionDecl {
+    fn parseFunction(self: *Parser) ParseResult!ast.FunctionDecl {
         const name = try self.consume(.identifier, error.ExpectedIdentifier);
         _ = try self.consume(.l_paren, error.ExpectedLeftParen);
 
@@ -52,7 +66,7 @@ pub const Parser = struct {
         return .{ .name = name.lexeme, .params = try params.toOwnedSlice(), .body = body };
     }
 
-    fn parseBlock(self: *Parser) ![]ast.Stmt {
+    fn parseBlock(self: *Parser) ParseResult![]ast.Stmt {
         _ = try self.consume(.l_brace, error.ExpectedLeftBrace);
         var statements = std.ArrayList(ast.Stmt).init(self.allocator);
         while (!self.current().is(.r_brace) and !self.current().is(.eof)) {
@@ -62,7 +76,7 @@ pub const Parser = struct {
         return try statements.toOwnedSlice();
     }
 
-    fn parseStatement(self: *Parser) !ast.Stmt {
+    fn parseStatement(self: *Parser) ParseResult!ast.Stmt {
         if (self.match(.kw_return)) {
             if (self.current().kind == .r_brace) return .{ .return_stmt = null };
             return .{ .return_stmt = try self.parseExpression() };
@@ -86,7 +100,7 @@ pub const Parser = struct {
         return .{ .expr_stmt = try self.parseExpression() };
     }
 
-    fn parseIfStmt(self: *Parser) !ast.Stmt.if_stmt {
+    fn parseIfStmt(self: *Parser) ParseResult!ast.Stmt.if_stmt {
         const condition = try self.parseExpression();
         const then_block = try self.parseBlock();
         var else_block: []ast.Stmt = &[_]ast.Stmt{};
@@ -94,17 +108,17 @@ pub const Parser = struct {
         return .{ .condition = condition, .then_block = then_block, .else_block = else_block };
     }
 
-    fn parseWhileStmt(self: *Parser) !ast.Stmt.while_stmt {
+    fn parseWhileStmt(self: *Parser) ParseResult!ast.Stmt.while_stmt {
         const condition = try self.parseExpression();
         const body = try self.parseBlock();
         return .{ .condition = condition, .body = body };
     }
 
-    fn parseExpression(self: *Parser) !*ast.Expr {
+    fn parseExpression(self: *Parser) ParseResult!*ast.Expr {
         return self.parseEquality();
     }
 
-    fn parseEquality(self: *Parser) !*ast.Expr {
+    fn parseEquality(self: *Parser) ParseResult!*ast.Expr {
         var expr = try self.parseComparison();
         while (self.match(.equal_equal) or self.match(.bang_equal)) {
             const op_token = self.previous();
@@ -114,7 +128,7 @@ pub const Parser = struct {
         return expr;
     }
 
-    fn parseComparison(self: *Parser) !*ast.Expr {
+    fn parseComparison(self: *Parser) ParseResult!*ast.Expr {
         var expr = try self.parseTerm();
         while (self.match(.less) or self.match(.less_equal) or self.match(.greater) or self.match(.greater_equal)) {
             const op_token = self.previous();
@@ -124,7 +138,7 @@ pub const Parser = struct {
         return expr;
     }
 
-    fn parseTerm(self: *Parser) !*ast.Expr {
+    fn parseTerm(self: *Parser) ParseResult!*ast.Expr {
         var expr = try self.parseFactor();
         while (self.match(.plus) or self.match(.minus)) {
             const op_token = self.previous();
@@ -134,7 +148,7 @@ pub const Parser = struct {
         return expr;
     }
 
-    fn parseFactor(self: *Parser) !*ast.Expr {
+    fn parseFactor(self: *Parser) ParseResult!*ast.Expr {
         var expr = try self.parsePrimary();
         while (self.match(.star) or self.match(.slash) or self.match(.percent)) {
             const op_token = self.previous();
@@ -144,7 +158,7 @@ pub const Parser = struct {
         return expr;
     }
 
-    fn parsePrimary(self: *Parser) !*ast.Expr {
+    fn parsePrimary(self: *Parser) ParseResult!*ast.Expr {
         if (self.match(.number)) return self.newExpr(.{ .number = self.previous().number.? });
         if (self.match(.kw_true)) return self.newExpr(.{ .boolean = true });
         if (self.match(.kw_false)) return self.newExpr(.{ .boolean = false });
@@ -173,7 +187,7 @@ pub const Parser = struct {
         return error.ExpectedExpression;
     }
 
-    fn makeBinary(self: *Parser, token_kind: TokenType, left: *ast.Expr, right: *ast.Expr) !*ast.Expr {
+    fn makeBinary(self: *Parser, token_kind: TokenType, left: *ast.Expr, right: *ast.Expr) ParseResult!*ast.Expr {
         const op = switch (token_kind) {
             .plus => ast.BinaryOp.add,
             .minus => ast.BinaryOp.sub,
@@ -191,13 +205,13 @@ pub const Parser = struct {
         return self.newExpr(.{ .binary = .{ .op = op, .left = left, .right = right } });
     }
 
-    fn newExpr(self: *Parser, expression: ast.Expr) !*ast.Expr {
+    fn newExpr(self: *Parser, expression: ast.Expr) ParseResult!*ast.Expr {
         const ptr = try self.allocator.create(ast.Expr);
         ptr.* = expression;
         return ptr;
     }
 
-    fn consume(self: *Parser, kind: TokenType, parse_error: anyerror) !Token {
+    fn consume(self: *Parser, kind: TokenType, parse_error: ParseError) ParseResult!Token {
         if (self.current().kind == kind) return self.advance();
         return parse_error;
     }
