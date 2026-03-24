@@ -66,20 +66,20 @@ pub const Interpreter = struct {
         self.globals.values.deinit();
     }
 
-    pub fn runMain(self: *Interpreter, program: ast.Program) !f64 {
+    pub fn runMain(self: *Interpreter, program: ast.Program) anyerror!f64 {
         try self.loadProgram(program);
         const result = try self.callFunction("main", &[_]RuntimeValue{});
         return result.asNumber();
     }
 
-    fn loadProgram(self: *Interpreter, program: ast.Program) !void {
+    fn loadProgram(self: *Interpreter, program: ast.Program) anyerror!void {
         for (program.items) |item| switch (item) {
             .const_decl => |decl| try self.globals.define(decl.name, try self.evalExpr(&self.globals, decl.value)),
             .function_decl => |decl| try self.functions.put(decl.name, decl),
         };
     }
 
-    fn callFunction(self: *Interpreter, name: []const u8, args: []const RuntimeValue) !RuntimeValue {
+    fn callFunction(self: *Interpreter, name: []const u8, args: []const RuntimeValue) anyerror!RuntimeValue {
         const function_decl = self.functions.get(name) orelse return error.UnknownFunction;
         if (function_decl.params.len != args.len) return error.InvalidArity;
 
@@ -100,7 +100,7 @@ pub const Interpreter = struct {
         returned: RuntimeValue,
     };
 
-    fn execBlock(self: *Interpreter, scope: *Scope, statements: []const ast.Stmt) !Signal {
+    fn execBlock(self: *Interpreter, scope: *Scope, statements: []const ast.Stmt) anyerror!Signal {
         for (statements) |statement| {
             const signal = try self.execStmt(scope, statement);
             if (signal == .returned) return signal;
@@ -108,7 +108,7 @@ pub const Interpreter = struct {
         return .none;
     }
 
-    fn execStmt(self: *Interpreter, scope: *Scope, statement: ast.Stmt) !Signal {
+    fn execStmt(self: *Interpreter, scope: *Scope, statement: ast.Stmt) anyerror!Signal {
         switch (statement) {
             .var_decl => |decl| {
                 try scope.define(decl.name, try self.evalExpr(scope, decl.value));
@@ -140,7 +140,7 @@ pub const Interpreter = struct {
         }
     }
 
-    fn evalExpr(self: *Interpreter, scope: *Scope, expr: *const ast.Expr) !RuntimeValue {
+    fn evalExpr(self: *Interpreter, scope: *Scope, expr: *const ast.Expr) anyerror!RuntimeValue {
         return switch (expr.*) {
             .number => |n| .{ .number = n },
             .boolean => |b| .{ .boolean = b },
@@ -155,7 +155,7 @@ pub const Interpreter = struct {
         };
     }
 
-    fn evalBinary(self: *Interpreter, scope: *Scope, op: ast.BinaryOp, left: *ast.Expr, right: *ast.Expr) !RuntimeValue {
+    fn evalBinary(self: *Interpreter, scope: *Scope, op: ast.BinaryOp, left: *ast.Expr, right: *ast.Expr) anyerror!RuntimeValue {
         const left_value = try self.evalExpr(scope, left);
         const right_value = try self.evalExpr(scope, right);
 

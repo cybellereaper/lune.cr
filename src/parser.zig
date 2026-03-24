@@ -100,7 +100,7 @@ pub const Parser = struct {
         return .{ .expr_stmt = try self.parseExpression() };
     }
 
-    fn parseIfStmt(self: *Parser) ParseResult!ast.Stmt.if_stmt {
+    fn parseIfStmt(self: *Parser) ParseResult!@FieldType(ast.Stmt, "if_stmt") {
         const condition = try self.parseExpression();
         const then_block = try self.parseBlock();
         var else_block: []ast.Stmt = &[_]ast.Stmt{};
@@ -108,7 +108,7 @@ pub const Parser = struct {
         return .{ .condition = condition, .then_block = then_block, .else_block = else_block };
     }
 
-    fn parseWhileStmt(self: *Parser) ParseResult!ast.Stmt.while_stmt {
+    fn parseWhileStmt(self: *Parser) ParseResult!@FieldType(ast.Stmt, "while_stmt") {
         const condition = try self.parseExpression();
         const body = try self.parseBlock();
         return .{ .condition = condition, .body = body };
