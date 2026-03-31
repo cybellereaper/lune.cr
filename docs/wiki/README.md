@@ -1,6 +1,6 @@
 # Lune Wiki
 
-This wiki is a practical guide to the current Lune language implementation in this repository.
+This wiki is a practical guide to the current Zig-based Lune implementation in this repository.
 
 ## Pages
 
@@ -11,14 +11,11 @@ This wiki is a practical guide to the current Lune language implementation in th
 
 ## What Lune currently supports
 
-Lune is a small expression-oriented language with:
+Lune currently includes:
 
-- Numeric values (`double` at runtime)
-- `true`/`false`/`null`
-- Variables with `const name = expr` and `name := expr`
-- Re-assignment via `name = expr`
-- `if`/`else`, `while`, `return`
-- Function declarations and function calls
-- JIT execution of `main()` and AOT object file emission
+- A Zig lexer for keywords, identifiers, numbers, strings, and operators
+- Leading trivia capture for whitespace and line comments
+- Structured lexical diagnostics with line/column positions
+- Zig-native unit tests for lexer behavior
 
-For exact syntax and examples, continue with [Language Tour](./language-tour.md).
+For syntax examples, continue with [Language Tour](./language-tour.md).

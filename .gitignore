@@ -1,3 +1,5 @@
 build/
 *.o
 dist/
+.zig-cache/
+zig-out/

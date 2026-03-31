@@ -3,52 +3,30 @@
 ## CLI usage
 
 ```text
-lune <file.lune> [--jit|--aot <out.o>]
+lune <file.lune>
 ```
 
 Behavior:
 
-- If `--aot` is provided, Lune emits an object file and exits.
-- Otherwise Lune JIT-compiles and runs `main()`, then prints the return value.
+- The CLI lexes the provided file.
+- Tokens are written to stdout.
+- Diagnostics are written to stderr and exit with an error status.
 
 ## Typical workflows
 
-### Quick JIT loop
+### Quick local run
 
 ```bash
-./build/lune program.lune
+zig build run -- program.lune
 ```
 
-or explicitly:
+### Build optimized binary
 
 ```bash
-./build/lune program.lune --jit
-```
-
-### Generate object code
-
-```bash
-./build/lune program.lune --aot program.o
-```
-
-## Build options
-
-`CMakeLists.txt` exposes:
-
-- `LUNE_BUILD_TESTS=ON|OFF` (default `ON`)
-
-Example disabling tests:
-
-```bash
-cmake -S . -B build -DLUNE_BUILD_TESTS=OFF
-cmake --build build -j
+zig build -Doptimize=ReleaseFast
 ```
 
 ## Diagnostics
 
-- Lexing and parsing collect diagnostics (line/column).
-- The CLI catches exceptions and prints `error: <message>`.
-
-## Pretty printing
-
-The codebase includes a pretty-printer utility (`pretty_print`) that renders AST back to source-like text. This is used in tests and is useful when inspecting parse output in development.
+- Lexer diagnostics include a message and line/column location.
+- `LexerDiagnosticsReported` is returned when diagnostics are present.
