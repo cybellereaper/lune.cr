@@ -5,14 +5,12 @@
 From the repository root:
 
 ```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j
+zig build
 ```
 
-This builds:
+This builds and installs:
 
-- `build/lune` (CLI)
-- `build/lune_tests` (test binary, when tests are enabled)
+- `zig-out/bin/lune` (CLI)
 
 ## 2) Write your first program
 
@@ -20,46 +18,22 @@ Create `hello.lune`:
 
 ```lune
 fn main() {
-    x := 40
-    x = x + 2
-    return x
+    value := 40
+    value = value + 2
+    return value
 }
 ```
 
-## 3) Run with JIT
+## 3) Tokenize source
 
 ```bash
-./build/lune hello.lune --jit
+zig build run -- hello.lune
 ```
 
-`--jit` is optional because JIT execution is the default mode when `--aot` is not selected.
+Expected output is a token stream with line/column positions.
 
-Expected output:
-
-```text
-42
-```
-
-## 4) Emit an object file (AOT)
+## 4) Run tests
 
 ```bash
-./build/lune hello.lune --aot hello.o
-```
-
-Expected output:
-
-```text
-Wrote object file: hello.o
-```
-
-## 5) Run tests
-
-```bash
-ctest --test-dir build --output-on-failure
-```
-
-or directly:
-
-```bash
-./build/lune_tests
+zig build test
 ```

@@ -37,6 +37,45 @@ pub const TokenType = enum {
     ge,
 };
 
+pub fn tokenTypeName(token_type: TokenType) []const u8 {
+    return switch (token_type) {
+        .end => "end",
+        .identifier => "identifier",
+        .number => "number",
+        .string => "string",
+        .kw_fn => "fn",
+        .kw_if => "if",
+        .kw_else => "else",
+        .kw_while => "while",
+        .kw_const => "const",
+        .kw_return => "return",
+        .kw_true => "true",
+        .kw_false => "false",
+        .kw_null => "null",
+        .l_paren => "(",
+        .r_paren => ")",
+        .l_brace => "{",
+        .r_brace => "}",
+        .comma => ",",
+        .dot => ".",
+        .colon => ":",
+        .plus => "+",
+        .minus => "-",
+        .star => "*",
+        .slash => "/",
+        .percent => "%",
+        .assign => "=",
+        .short_decl => ":=",
+        .arrow => "=>",
+        .eq => "==",
+        .ne => "!=",
+        .lt => "<",
+        .le => "<=",
+        .gt => ">",
+        .ge => ">=",
+    };
+}
+
 pub const Token = struct {
     token_type: TokenType,
     lexeme: []const u8,

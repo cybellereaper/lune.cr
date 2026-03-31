@@ -2,39 +2,27 @@
 
 ## What is covered
 
-The `lune_tests` binary currently validates:
+The Zig test suite currently validates lexer behavior:
 
-- Lexer tokenization and diagnostics
-- Parser shape and recovery behavior
-- JIT execution (`main`, arithmetic, loops, function calls)
-- AOT object-file emission
-- Pretty-printer output
-- GC mark/sweep behavior
-- Basic performance sanity checks
+- Keyword and identifier tokenization
+- Numeric and operator tokenization
+- Leading trivia capture (whitespace/comments)
+- Diagnostic reporting for lexical errors
 
 ## Run tests
 
-After building:
-
 ```bash
-./build/lune_tests
+zig build test
 ```
 
-or via CTest:
+or directly:
 
 ```bash
-ctest --test-dir build --output-on-failure
+zig test src/lexer.zig
 ```
 
 ## Add new tests
 
-1. Add a `void test_*()` function in `tests/lune_tests.cpp`.
-2. Keep tests deterministic and avoid external dependencies.
-3. Register the test call from `main()`.
-4. Rebuild and run `./build/lune_tests`.
-
-## Recommended areas for future tests
-
-- More parser edge cases (nested blocks, invalid call syntax)
-- AOT object validation by linking and executing a small program
-- Runtime semantics once string/null typing is expanded
+1. Add a new `test "..." { ... }` block in `src/lexer.zig`.
+2. Keep tests deterministic and independent.
+3. Run `zig build test`.
