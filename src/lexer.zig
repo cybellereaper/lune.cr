@@ -244,13 +244,7 @@ pub const Lexer = struct {
         }
 
         const lexeme = self.scanner.source[start.offset..self.scanner.offset];
-        try result.tokens.append(self.allocator, .{
-            .token_type = keywordType(lexeme),
-            .lexeme = lexeme,
-            .leading_trivia = trivia,
-            .line = start.line,
-            .column = start.column,
-        });
+        return self.appendToken(result, keywordType(lexeme), trivia, start, self.scanner.offset);
     }
 
     fn scanNumber(self: *Lexer, result: *Result, start: TokenStart, trivia: []const u8) !void {
@@ -283,26 +277,14 @@ pub const Lexer = struct {
         }
 
         if (self.scanner.isAtEnd()) {
-            try result.tokens.append(self.allocator, .{
-                .token_type = .string,
-                .lexeme = self.scanner.source[string_content_start..self.scanner.offset],
-                .leading_trivia = trivia,
-                .line = start.line,
-                .column = start.column,
-            });
+            try self.appendTokenSlice(result, .string, trivia, start, string_content_start, self.scanner.offset);
             return self.appendDiagnostic(result, .unterminated_string, start);
         }
 
         const string_content_end = self.scanner.offset;
         _ = self.scanner.advance();
 
-        try result.tokens.append(self.allocator, .{
-            .token_type = .string,
-            .lexeme = self.scanner.source[string_content_start..string_content_end],
-            .leading_trivia = trivia,
-            .line = start.line,
-            .column = start.column,
-        });
+        try self.appendTokenSlice(result, .string, trivia, start, string_content_start, string_content_end);
     }
 
     fn skipTrivia(self: *Lexer) void {
@@ -326,9 +308,13 @@ pub const Lexer = struct {
     }
 
     fn appendToken(self: *Lexer, result: *Result, token_type: TokenType, trivia: []const u8, start: TokenStart, end_offset: usize) !void {
+        return self.appendTokenSlice(result, token_type, trivia, start, start.offset, end_offset);
+    }
+
+    fn appendTokenSlice(self: *Lexer, result: *Result, token_type: TokenType, trivia: []const u8, start: TokenStart, start_offset: usize, end_offset: usize) !void {
         try result.tokens.append(self.allocator, .{
             .token_type = token_type,
-            .lexeme = self.scanner.source[start.offset..end_offset],
+            .lexeme = self.scanner.source[start_offset..end_offset],
             .leading_trivia = trivia,
             .line = start.line,
             .column = start.column,
@@ -438,6 +424,18 @@ test "reports unterminated string and keeps parsed text" {
     try std.testing.expectEqual(@as(usize, 1), result.diagnostics.items.len);
     try std.testing.expectEqual(DiagnosticKind.unterminated_string, result.diagnostics.items[0].kind);
     try std.testing.expectEqualStrings("Unterminated string", result.diagnostics.items[0].message());
+}
+
+test "parses terminated string without diagnostics" {
+    const allocator = std.testing.allocator;
+    var lexer = Lexer.init(allocator, "\"hello\"");
+    var result = try lexer.tokenize();
+    defer result.deinit(allocator);
+
+    try std.testing.expectEqual(@as(usize, 2), result.tokens.items.len);
+    try std.testing.expectEqual(TokenType.string, result.tokens.items[0].token_type);
+    try std.testing.expectEqualStrings("hello", result.tokens.items[0].lexeme);
+    try std.testing.expectEqual(@as(usize, 0), result.diagnostics.items.len);
 }
 
 test "parses comparison and arrow operators" {
