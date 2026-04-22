@@ -10,23 +10,23 @@ Behavior:
 
 - The CLI lexes the provided file.
 - Tokens are written to stdout.
-- Diagnostics are written to stderr and exit with an error status.
+- Diagnostics are written to stderr and exit with status code `1`.
 
 ## Typical workflows
 
 ### Quick local run
 
 ```bash
-zig build run -- program.lune
+crystal run src/lune.cr -- program.lune
 ```
 
 ### Build optimized binary
 
 ```bash
-zig build -Doptimize=ReleaseFast
+crystal build src/lune.cr --release -o bin/lune
 ```
 
 ## Diagnostics
 
 - Lexer diagnostics include a message and line/column location.
-- `LexerDiagnosticsReported` is returned when diagnostics are present.
+- The CLI returns exit code `1` when diagnostics are present.
