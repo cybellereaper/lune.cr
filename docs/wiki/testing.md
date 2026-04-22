@@ -2,7 +2,7 @@
 
 ## What is covered
 
-The Zig test suite currently validates lexer behavior:
+The Crystal spec suite currently validates lexer behavior:
 
 - Keyword and identifier tokenization
 - Numeric and operator tokenization
@@ -12,17 +12,11 @@ The Zig test suite currently validates lexer behavior:
 ## Run tests
 
 ```bash
-zig build test
-```
-
-or directly:
-
-```bash
-zig test src/lexer.zig
+crystal spec
 ```
 
 ## Add new tests
 
-1. Add a new `test "..." { ... }` block in `src/lexer.zig`.
-2. Keep tests deterministic and independent.
-3. Run `zig build test`.
+1. Add a new `it "..." do ... end` block in `spec/lexer_spec.cr`.
+2. Keep specs deterministic and independent.
+3. Run `crystal spec`.

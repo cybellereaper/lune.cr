@@ -1,6 +1,6 @@
 # Lune Wiki
 
-This wiki is a practical guide to the current Zig-based Lune implementation in this repository.
+This wiki is a practical guide to the current Crystal-based Lune implementation in this repository.
 
 ## Pages
 
@@ -13,9 +13,9 @@ This wiki is a practical guide to the current Zig-based Lune implementation in t
 
 Lune currently includes:
 
-- A Zig lexer for keywords, identifiers, numbers, strings, and operators
+- A Crystal lexer for keywords, identifiers, numbers, strings, and operators
 - Leading trivia capture for whitespace and line comments
 - Structured lexical diagnostics with line/column positions
-- Zig-native unit tests for lexer behavior
+- Crystal specs for lexer behavior
 
 For syntax examples, continue with [Language Tour](./language-tour.md).

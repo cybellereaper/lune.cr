@@ -1,16 +1,12 @@
 # Getting Started with Lune
 
-## 1) Build
+## 1) Install dependencies
 
 From the repository root:
 
 ```bash
-zig build
+shards install
 ```
-
-This builds and installs:
-
-- `zig-out/bin/lune` (CLI)
 
 ## 2) Write your first program
 
@@ -27,7 +23,7 @@ fn main() {
 ## 3) Tokenize source
 
 ```bash
-zig build run -- hello.lune
+crystal run src/lune.cr -- hello.lune
 ```
 
 Expected output is a token stream with line/column positions.
@@ -35,5 +31,5 @@ Expected output is a token stream with line/column positions.
 ## 4) Run tests
 
 ```bash
-zig build test
+crystal spec
 ```
