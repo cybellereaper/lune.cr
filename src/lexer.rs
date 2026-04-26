@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TokenType {
     End,
@@ -180,25 +178,12 @@ impl<'a> Scanner<'a> {
 
 pub struct Lexer<'a> {
     scanner: Scanner<'a>,
-    keywords: HashMap<&'static str, TokenType>,
 }
 
 impl<'a> Lexer<'a> {
     pub fn new(source: &'a str) -> Self {
-        let keywords = HashMap::from([
-            ("fn", TokenType::KwFn),
-            ("if", TokenType::KwIf),
-            ("else", TokenType::KwElse),
-            ("while", TokenType::KwWhile),
-            ("const", TokenType::KwConst),
-            ("return", TokenType::KwReturn),
-            ("true", TokenType::KwTrue),
-            ("false", TokenType::KwFalse),
-            ("null", TokenType::KwNull),
-        ]);
         Self {
             scanner: Scanner::new(source),
-            keywords,
         }
     }
 
@@ -321,7 +306,7 @@ impl<'a> Lexer<'a> {
         }
 
         let lexeme = self.slice(start.offset, self.scanner.offset);
-        let token_type = *self.keywords.get(lexeme).unwrap_or(&TokenType::Identifier);
+        let token_type = keyword_token(lexeme).unwrap_or(TokenType::Identifier);
         self.append_token(tokens, token_type, trivia, start, self.scanner.offset);
     }
 
@@ -493,6 +478,21 @@ fn identifier_start(ch: u8) -> bool {
 
 fn identifier_part(ch: u8) -> bool {
     identifier_start(ch) || is_ascii_digit(ch)
+}
+
+fn keyword_token(lexeme: &str) -> Option<TokenType> {
+    match lexeme {
+        "fn" => Some(TokenType::KwFn),
+        "if" => Some(TokenType::KwIf),
+        "else" => Some(TokenType::KwElse),
+        "while" => Some(TokenType::KwWhile),
+        "const" => Some(TokenType::KwConst),
+        "return" => Some(TokenType::KwReturn),
+        "true" => Some(TokenType::KwTrue),
+        "false" => Some(TokenType::KwFalse),
+        "null" => Some(TokenType::KwNull),
+        _ => None,
+    }
 }
 
 #[cfg(test)]

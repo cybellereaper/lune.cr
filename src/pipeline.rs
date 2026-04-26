@@ -18,18 +18,30 @@ pub fn run_pipeline(source: &str) -> PipelineOutput {
     let mut lexer = Lexer::new(source);
     let lexed = lexer.tokenize();
 
-    let parsed = if lexed.diagnostics.is_empty() {
-        Parser::new(&lexed.tokens).parse()
-    } else {
-        ParseResult {
-            program: Program::new(Vec::new()),
-            diagnostics: Vec::new(),
-        }
-    };
+    let parsed = parse_stage(&lexed);
+    let can_execute = lexed.diagnostics.is_empty() && parsed.diagnostics.is_empty();
 
-    let resolved = Resolver::new().resolve(&parsed.program);
-    let bytecode = BytecodeCompiler::new().compile(&resolved.resolved_program);
-    let vm_result = Vm::new().run(&bytecode);
+    let (resolved, bytecode, vm_result) = if can_execute {
+        let resolved = Resolver::new().resolve(&parsed.program);
+        let bytecode = BytecodeCompiler::new().compile(&resolved.resolved_program);
+        let vm_result = Vm::new().run(&bytecode);
+        (resolved, bytecode, vm_result)
+    } else {
+        (
+            ResolveResult {
+                resolved_program: Program::new(Vec::new()),
+                diagnostics: Vec::new(),
+            },
+            Bytecode {
+                constants: Vec::new(),
+                instructions: Vec::new(),
+            },
+            VmResult {
+                stack: Vec::new(),
+                diagnostics: Vec::new(),
+            },
+        )
+    };
 
     PipelineOutput {
         lexed,
@@ -38,6 +50,17 @@ pub fn run_pipeline(source: &str) -> PipelineOutput {
         bytecode,
         vm_result,
     }
+}
+
+fn parse_stage(lexed: &LexerResult) -> ParseResult {
+    if !lexed.diagnostics.is_empty() {
+        return ParseResult {
+            program: Program::new(Vec::new()),
+            diagnostics: Vec::new(),
+        };
+    }
+
+    Parser::new(&lexed.tokens).parse()
 }
 
 #[cfg(test)]
@@ -59,6 +82,7 @@ mod tests {
                 Value::Bool(true)
             ]
         );
+        assert!(output.vm_result.diagnostics.is_empty());
     }
 
     #[test]

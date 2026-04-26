@@ -52,11 +52,23 @@ fn run(argv: Vec<String>) -> i32 {
         );
     }
 
+    for diagnostic in &output.vm_result.diagnostics {
+        eprintln!(
+            "vm error: {} at instruction {} (constant index {})",
+            diagnostic.kind.message(),
+            diagnostic.instruction_offset,
+            diagnostic.constant_index
+        );
+    }
+
     if output.lexed.diagnostics.is_empty() {
         println!("vm stack: {:?}", output.vm_result.stack);
     }
 
-    if output.lexed.diagnostics.is_empty() && output.parsed.diagnostics.is_empty() {
+    if output.lexed.diagnostics.is_empty()
+        && output.parsed.diagnostics.is_empty()
+        && output.vm_result.diagnostics.is_empty()
+    {
         0
     } else {
         1
