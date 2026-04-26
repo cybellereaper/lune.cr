@@ -40,11 +40,7 @@ impl<'a> Parser<'a> {
         let mut nodes = Vec::new();
         let mut diagnostics = Vec::new();
 
-        for token in self
-            .tokens
-            .iter()
-            .filter(|token| token.token_type != TokenType::End)
-        {
+        for token in self.tokens.iter().filter(|token| !is_end_token(token)) {
             match token_to_node(token) {
                 Ok(Some(node)) => nodes.push(node),
                 Ok(None) => {}
@@ -61,6 +57,10 @@ impl<'a> Parser<'a> {
             diagnostics,
         }
     }
+}
+
+fn is_end_token(token: &Token) -> bool {
+    token.token_type == TokenType::End
 }
 
 fn token_to_node(token: &Token) -> Result<Option<AstNode>, ParserDiagnosticKind> {
@@ -107,5 +107,28 @@ mod tests {
                 AstNode::Identifier("foo".to_owned())
             ]
         );
+    }
+
+    #[test]
+    fn reports_invalid_number_diagnostic_when_number_token_is_malformed() {
+        let tokens = [Token {
+            token_type: TokenType::Number,
+            lexeme: "1.2.3".to_owned(),
+            leading_trivia: String::new(),
+            line: 10,
+            column: 4,
+        }];
+        let parser = Parser::new(&tokens);
+
+        let result = parser.parse();
+
+        assert_eq!(result.program.nodes, Vec::<AstNode>::new());
+        assert_eq!(result.diagnostics.len(), 1);
+        assert_eq!(
+            result.diagnostics[0].kind,
+            ParserDiagnosticKind::InvalidNumber
+        );
+        assert_eq!(result.diagnostics[0].line, 10);
+        assert_eq!(result.diagnostics[0].column, 4);
     }
 }
