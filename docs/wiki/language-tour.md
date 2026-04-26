@@ -1,156 +1,136 @@
-# Lune Language Tour
+# Language Tour
 
-This page documents the currently implemented syntax and behavior.
+This page documents what the current implementation recognizes and how it behaves.
 
-## Program shape
+## Important model note
 
-A file is parsed as a sequence of declarations/statements. In practice, provide a `main` function for execution:
+Lune currently has **token-level projection**, not a full expression/statement parser. That means many language-looking forms are lexed, but only certain token kinds become runtime values.
 
-```lune
-fn main() {
-    return 0
-}
-```
+## Supported lexical forms
 
-## Values and literals
-
-### Numbers
-
-Numbers are floating-point (`double`) internally:
+### Literals
 
 ```lune
-x := 1
-y := 2.5
-z := x + y
+123
+45.67
+"text"
+true
+false
+null
 ```
 
-### Booleans
+### Identifiers
 
 ```lune
-ok := true
-fail := false
+name
+_user_1
 ```
 
-Booleans are represented as numeric `1.0` (`true`) and `0.0` (`false`) during code generation.
+Identifiers are collected into AST as `Identifier(String)` and currently reported as unresolved by the resolver.
 
-### Null
+### Keywords recognized by lexer
+
+```text
+fn if else while const return true false null
+```
+
+### Operators and punctuation recognized by lexer
+
+```text
+( ) { } , . : + - * / % = := => == != < <= > >=
+```
+
+### Comments
+
+Line comments are supported:
 
 ```lune
-n := null
+42 // comment
+"x"
 ```
 
-`null` currently lowers to `0.0` at runtime.
+## What becomes runtime values
 
-### Strings
+The bytecode compiler emits constants for:
+
+- numbers
+- strings
+- booleans
+- null
+
+Identifiers are ignored during bytecode generation.
+
+### Example: literal stack program
 
 ```lune
-msg := "hello"
+1
+"hello"
+false
+null
 ```
 
-Strings are tokenized and parsed, but runtime string semantics are not implemented yet (currently codegen lowers string expressions to `0.0`).
+Runtime stack result:
 
-## Variables and assignment
+```text
+[Number(1.0), String("hello"), Bool(false), Null]
+```
 
-### Constant declaration
+### Example: mixed literals + identifiers
 
 ```lune
-const seed = 123
+1
+foo
+2
+bar
 ```
 
-### Short declaration
+Behavior:
+
+- resolver warnings for `foo`, `bar`
+- VM stack still contains literal values: `1`, `2`
+
+## Diagnostics behavior
+
+### Lexer diagnostics
+
+- unexpected `!` (unless part of `!=`)
+- unexpected character (e.g. `@`)
+- unterminated string
+
+### Parser diagnostics
+
+- invalid number literal conversion for `TokenType::Number` values that fail `f64` parsing
+
+### VM diagnostics
+
+- invalid constant index (should not happen in normal compiler output, but VM handles it defensively)
+
+## Practical usage patterns
+
+### Pattern 1: data-only scripts (works well now)
 
 ```lune
-x := 10
+100
+"region-us"
+true
 ```
 
-### Assignment
+Use this to exercise end-to-end tokenization → compilation → VM stack evaluation.
+
+### Pattern 2: syntax prototyping
 
 ```lune
-a := 1
-a = a + 5
+fn add(a, b) { return a + b }
+if x >= 10 { y := 1 }
 ```
 
-## Arithmetic and comparison operators
+Useful for lexer validation and token shape, even though these forms are not yet semantically executed.
 
-Supported binary operators:
+## Non-goals (current stage)
 
-- Arithmetic: `+`, `-`, `*`, `/`, `%`
-- Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`
+The following are not implemented as executable language semantics yet:
 
-Example:
-
-```lune
-fn main() {
-    a := 20
-    b := 6
-    mod := a % b
-    ok := mod == 2
-    if ok {
-        return 1
-    } else {
-        return 0
-    }
-}
-```
-
-## Control flow
-
-### if / else
-
-```lune
-fn main() {
-    x := 3
-    if x > 2 {
-        return 10
-    } else {
-        return 20
-    }
-}
-```
-
-### while
-
-```lune
-fn main() {
-    i := 1
-    sum := 0
-    while i <= 5 {
-        sum = sum + i
-        i = i + 1
-    }
-    return sum
-}
-```
-
-## Functions and calls
-
-Define and call functions with positional arguments:
-
-```lune
-fn add(a, b) {
-    return a + b
-}
-
-fn main() {
-    return add(10, 32)
-}
-```
-
-## Comments
-
-Line comments are supported using `//`:
-
-```lune
-fn main() {
-    // this is ignored by the lexer
-    return 42
-}
-```
-
-## Notes and current limitations
-
-- No logical operators like `&&`/`||`.
-- No unary `!`.
-- `if` exists as a statement; `IfExpr` is present in the AST but not lowered in codegen.
-- Calls currently require a named callee (`identifier(args...)`).
-- Strings and `null` are parsed but not fully typed/runtime-backed.
+- function declarations/calls
+- variable binding and mutation semantics
+- control-flow execution (`if`, `while`)
+- operator expression evaluation
