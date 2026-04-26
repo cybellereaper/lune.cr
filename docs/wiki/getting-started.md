@@ -1,35 +1,79 @@
-# Getting Started with Lune
+# Getting Started
 
-## 1) Install dependencies
+This guide gets you from clone to running `.lune` files with the current Rust CLI.
 
-From the repository root:
+## 1) Prerequisites
+
+- Rust toolchain (stable)
+- Cargo
+
+Optional but useful:
+
+- `rustfmt`
+- `clippy`
+
+## 2) Build and run tests
+
+From repository root:
 
 ```bash
-shards install
+cargo test
 ```
 
-## 2) Write your first program
+## 3) Create a Lune file
 
 Create `hello.lune`:
 
 ```lune
-fn main() {
-    value := 40
-    value = value + 2
-    return value
-}
+42
+"hi"
+true
+null
+name
 ```
 
-## 3) Tokenize source
+### Why this example?
+
+With the current implementation:
+
+- literals (`42`, `"hi"`, `true`, `null`) become AST nodes, constants, then VM stack values.
+- identifiers (`name`) are accepted lexically but reported by resolver as unresolved.
+
+## 4) Run the CLI
 
 ```bash
-crystal run src/lune.cr -- hello.lune
+cargo run -- hello.lune
 ```
 
-Expected output is a token stream with line/column positions.
+## 5) Understand the output
 
-## 4) Run tests
+You should expect output sections in this order:
 
-```bash
-crystal spec
-```
+1. **Tokens** (stdout), one per line with type, lexeme, and position.
+2. **Diagnostics** (stderr), if present:
+   - `lexer error: ...`
+   - `parser error: ...`
+   - `resolver warning: ...`
+   - `vm error: ...`
+3. **VM stack** (stdout) if lexing succeeded.
+
+## 6) Exit codes
+
+- `0`: no lexer/parser/vm errors.
+- `1`: usage error, IO error, or any lexer/parser/vm diagnostics.
+
+Resolver output is a warning stream and does not currently block successful execution by itself.
+
+## Troubleshooting
+
+### `Usage: lune <file.lune>`
+
+You passed zero or multiple arguments. Provide exactly one source file.
+
+### `error: ...` while reading file
+
+Check path correctness and file permissions.
+
+### You expected rich language execution
+
+At this stage, Lune is intentionally minimal. See [Language Tour](./language-tour.md) for the exact current behavior.

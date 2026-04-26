@@ -1,22 +1,69 @@
 # Testing Guide
 
-## What is covered
+## Test scope in this repository
 
-The Crystal spec suite currently validates lexer behavior:
+The test suite currently covers each pipeline stage with unit tests colocated in source modules:
 
-- Keyword and identifier tokenization
-- Numeric and operator tokenization
-- Leading trivia capture (whitespace/comments)
-- Diagnostic reporting for lexical errors
+- `lexer.rs` — tokenization, trivia, diagnostics
+- `parser.rs` — AST projection + parser diagnostics
+- `resolver.rs` — unresolved identifier diagnostics
+- `bytecode.rs` — literal-to-bytecode compilation
+- `vm.rs` — instruction execution + VM diagnostics
+- `pipeline.rs` — stage integration and short-circuit behavior
 
 ## Run tests
 
 ```bash
-crystal spec
+cargo test
 ```
 
-## Add new tests
+## Run focused tests
 
-1. Add a new `it "..." do ... end` block in `spec/lexer_spec.cr`.
-2. Keep specs deterministic and independent.
-3. Run `crystal spec`.
+```bash
+cargo test lexer
+cargo test parser
+cargo test pipeline
+```
+
+## Recommended local quality checks
+
+```bash
+cargo fmt -- --check
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test
+```
+
+## How to add tests effectively
+
+### 1) Unit tests near the code
+
+Follow existing style:
+
+- place tests under `#[cfg(test)] mod tests`
+- keep test names behavior-focused
+- assert both happy path and diagnostics
+
+### 2) Cover edge cases first
+
+Examples of valuable edge coverage:
+
+- lexer: unterminated strings, unknown characters, tricky operator pairs (`=`, `==`, `=>`)
+- parser: malformed numeric token payloads
+- vm: invalid constant indexes and halt behavior
+
+### 3) Keep assertions specific
+
+Assert exact:
+
+- token type sequences
+- diagnostic kinds and positions
+- stack values and instruction behavior
+
+## Example minimal regression test checklist
+
+When changing parser/bytecode/vm behavior, include tests for:
+
+- valid literal handling
+- invalid input diagnostics
+- no panic/crash on malformed data
+- preserved output contract for CLI-facing structures
