@@ -1,7 +1,8 @@
 use std::env;
 use std::fs;
 
-use lune::{Lexer, Token, TokenType, TOKEN_TYPE_NAMES};
+use lune::pipeline::run_pipeline;
+use lune::{Token, TokenType, TOKEN_TYPE_NAMES};
 
 fn main() {
     std::process::exit(run(env::args().skip(1).collect()));
@@ -22,24 +23,44 @@ fn run(argv: Vec<String>) -> i32 {
         }
     };
 
-    let mut lexer = Lexer::new(&source);
-    let result = lexer.tokenize();
-    print_tokens(&result.tokens);
+    let output = run_pipeline(&source);
+    print_tokens(&output.lexed.tokens);
 
-    if result.diagnostics.is_empty() {
-        return 0;
-    }
-
-    for diagnostic in &result.diagnostics {
+    for diagnostic in &output.lexed.diagnostics {
         eprintln!(
-            "error: {} at {}:{}",
+            "lexer error: {} at {}:{}",
             diagnostic.message(),
             diagnostic.line,
             diagnostic.column
         );
     }
 
-    1
+    for diagnostic in &output.parsed.diagnostics {
+        eprintln!(
+            "parser error: {} at {}:{}",
+            diagnostic.kind.message(),
+            diagnostic.line,
+            diagnostic.column
+        );
+    }
+
+    for diagnostic in &output.resolved.diagnostics {
+        eprintln!(
+            "resolver warning: {} ({})",
+            diagnostic.kind.message(),
+            diagnostic.name
+        );
+    }
+
+    if output.lexed.diagnostics.is_empty() {
+        println!("vm stack: {:?}", output.vm_result.stack);
+    }
+
+    if output.lexed.diagnostics.is_empty() && output.parsed.diagnostics.is_empty() {
+        0
+    } else {
+        1
+    }
 }
 
 fn print_tokens(tokens: &[Token]) {
