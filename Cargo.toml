@@ -13,3 +13,6 @@ path = "src/main.rs"
 
 [dependencies]
 thiserror = "1"
+
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }
+tungstenite = { version = "0.24", default-features = false, features = ["rustls-tls-webpki-roots", "handshake"] }
