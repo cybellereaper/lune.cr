@@ -43,7 +43,7 @@ impl WebSocketTransport for TungsteniteTransport {
     fn send_text(&mut self, session_id: &str, message: &str) -> Result<(), PackageError> {
         let socket = self.socket_mut(session_id)?;
         socket
-            .send(Message::Text(message.to_owned().into()))
+            .send(Message::Text(message.to_owned()))
             .map_err(|error| PackageError::ExecutionFailed {
                 message: error.to_string(),
             })
