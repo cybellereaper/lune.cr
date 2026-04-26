@@ -6,6 +6,8 @@ Command:
 
 ```text
 lune [--no-tokens] <file.lune>
+lune --emit-bytecode <output.lbc> <file.lune>
+lune --run-bytecode <file.lbc>
 lune --help
 ```
 
@@ -31,6 +33,8 @@ Options:
 
 - `--help` / `-h` — print usage and exit `0`
 - `--no-tokens` — skip token output and print diagnostics + stack only
+- `--emit-bytecode <output.lbc> <file.lune>` — compile source into a persisted bytecode artifact
+- `--run-bytecode <file.lbc>` — execute a previously emitted bytecode artifact without re-parsing source
 
 ## Local workflows
 
