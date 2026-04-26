@@ -5,6 +5,7 @@
 The test suite currently covers each pipeline stage with unit tests colocated in source modules:
 
 - `lexer.rs` — tokenization, trivia, diagnostics
+- `cli.rs` — argument parsing, CLI output contract, read-error handling
 - `parser.rs` — AST projection + parser diagnostics
 - `resolver.rs` — unresolved identifier diagnostics
 - `bytecode.rs` — literal-to-bytecode compilation

@@ -5,7 +5,8 @@
 Command:
 
 ```text
-lune <file.lune>
+lune [--no-tokens] <file.lune>
+lune --help
 ```
 
 In this repository, the easiest invocation during development is:
@@ -25,6 +26,11 @@ For a single input file, CLI runs:
 5. VM execution
 
 It prints token stream first, then diagnostics, then VM stack (when lexing succeeds).
+
+Options:
+
+- `--help` / `-h` — print usage and exit `0`
+- `--no-tokens` — skip token output and print diagnostics + stack only
 
 ## Local workflows
 
